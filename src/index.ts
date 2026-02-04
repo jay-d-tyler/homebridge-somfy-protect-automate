@@ -18,7 +18,7 @@ interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
 }
 
 export = (api: API) => {
-  api.registerPlatform(PLATFORM_NAME, SomfyProtectAutomatePlatform);
+  api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SomfyProtectAutomatePlatform);
 };
 
 class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
