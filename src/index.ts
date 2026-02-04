@@ -54,6 +54,16 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
     const uuid = this.api.hap.uuid.generate(buttonLabel);
     this.log.info(`Generated UUID for "${buttonLabel}": ${uuid}`);
 
+    // Clean up old accessories with different names
+    const oldAccessoriesToRemove = this.accessories.filter(acc => acc.UUID !== uuid);
+    if (oldAccessoriesToRemove.length > 0) {
+      this.log.info(`Removing ${oldAccessoriesToRemove.length} old cached accessory(ies)...`);
+      oldAccessoriesToRemove.forEach(acc => {
+        this.log.info(`  - Removing: "${acc.displayName}"`);
+      });
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, oldAccessoriesToRemove);
+    }
+
     const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
 
     if (existingAccessory) {
