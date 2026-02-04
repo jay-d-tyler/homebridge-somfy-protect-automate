@@ -148,9 +148,7 @@ class SomfyDisarmSwitch {
 
       this.platform.log.info(`Sending disarm command to Somfy Protect HTTP API at ${url}...`);
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      const headers: Record<string, string> = {};
 
       if (token) {
         headers.Authorization = `Bearer ${token}`;
