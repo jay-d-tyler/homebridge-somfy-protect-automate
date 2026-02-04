@@ -33,10 +33,12 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
-    this.log.debug('Finished initializing platform:', this.config.name);
+    this.log.info('=== Somfy Protect Automate v1.0.10 Initializing ===');
+    this.log.info('Platform name:', this.config.name);
+    this.log.info('Alarm name configured:', this.config.alarmName || '(not set)');
 
     this.api.on('didFinishLaunching', () => {
-      this.log.debug('Executed didFinishLaunching callback');
+      this.log.info('Homebridge finished launching, discovering devices...');
       this.discoverDevices();
     });
   }
@@ -47,8 +49,10 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   }
 
   discoverDevices() {
+    this.log.info('Starting device discovery...');
     const buttonLabel = 'Disarm Somfy Protect';
     const uuid = this.api.hap.uuid.generate(buttonLabel);
+    this.log.info(`Generated UUID for "${buttonLabel}": ${uuid}`);
 
     const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
 
@@ -59,7 +63,9 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
       this.log.info('Adding new accessory:', buttonLabel);
       const accessory = new this.api.platformAccessory(buttonLabel, uuid);
       new SomfyDisarmSwitch(this, accessory);
+      this.log.info('Registering accessory with Homebridge...');
       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.log.info('✓ Accessory registered successfully');
     }
   }
 }
@@ -72,6 +78,8 @@ class SomfyDisarmSwitch {
     private readonly platform: SomfyProtectAutomatePlatform,
     private readonly accessory: PlatformAccessory,
   ) {
+    this.platform.log.info(`Initializing switch: "${accessory.displayName}"`);
+
     // Set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Jay Tyler')
@@ -87,10 +95,14 @@ class SomfyDisarmSwitch {
       accessory.displayName,
     );
 
+    this.platform.log.info('Registering characteristic handlers...');
+
     // Register handlers for the On characteristic
     this.service.getCharacteristic(this.platform.Characteristic.On)
       .onSet(this.setOn.bind(this))
       .onGet(this.getOn.bind(this));
+
+    this.platform.log.info('✓ Switch initialized and ready');
   }
 
   async setOn(value: CharacteristicValue) {
