@@ -2,7 +2,7 @@
   "name": "@jay-d-tyler/homebridge-somfy-protect-automate",
   "displayName": "Somfy Protect Automate",
   "type": "module",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "private": false,
   "description": "A Homebridge plugin that provides a stateless switch to disarm Somfy Protect alarms via automations",
   "author": "Jay Tyler",
