@@ -1,7 +1,9 @@
 {
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
-  "singular": false,
+  "singular": true,
+  "headerDisplay": "This plugin automatically creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm. No configuration needed!",
+  "footerDisplay": "💡 **Tip:** The switch will automatically find your Somfy Protect alarm. You can rename the switch in the Home app if desired.",
   "schema": {
     "type": "object",
     "properties": {
@@ -9,30 +11,8 @@
         "title": "Name",
         "type": "string",
         "default": "Somfy Protect Automate",
-        "required": true,
-        "description": "The name that will appear in your Homebridge log."
-      },
-      "buttonLabel": {
-        "title": "Button Label",
-        "type": "string",
-        "default": "Disarm Somfy",
-        "required": false,
-        "description": "The name of the switch that will appear in HomeKit."
+        "required": false
       }
     }
-  },
-  "layout": [
-    {
-      "type": "fieldset",
-      "title": "Plugin Settings",
-      "expandable": false,
-      "items": [
-        "name",
-        {
-          "key": "buttonLabel",
-          "description": "This is the name that will appear in the Home app. You can use this switch in automations to disarm your Somfy Protect alarm."
-        }
-      ]
-    }
-  ]
+  }
 }

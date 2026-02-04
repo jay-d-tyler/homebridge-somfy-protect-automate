@@ -14,7 +14,6 @@ const PLATFORM_NAME = 'SomfyProtectAutomate';
 
 interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
   name?: string;
-  buttonLabel?: string;
 }
 
 export default (api: API) => {
@@ -47,7 +46,7 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   }
 
   discoverDevices() {
-    const buttonLabel = this.config.buttonLabel || 'Disarm Somfy';
+    const buttonLabel = 'Disarm Somfy Protect';
     const uuid = this.api.hap.uuid.generate(buttonLabel);
 
     const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
