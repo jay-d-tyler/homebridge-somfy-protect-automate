@@ -2,7 +2,7 @@
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that communicates with the Somfy Protect plugin's HTTP API to disarm your alarm via HomeKit automations.\n\n⚠️ **IMPORTANT:** The Somfy Protect plugin must have the HTTP API enabled (httpPort setting). Both plugins can run on child bridges.",
+  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that communicates with the Somfy Protect plugin's HTTP API to disarm your alarm via HomeKit automations.\n\n⚠️ **IMPORTANT:** The Somfy Protect plugin must have the HTTP API enabled (httpPort setting). Both plugins can run on child bridges.\n\n⚠️ **PORT NOTE:** Use port 8582 (default). Port 8581 is reserved for Homebridge Config UI.",
   "footerDisplay": "💡 **Tip:** Make sure the HTTP port and token match what you configured in the Somfy Protect plugin settings.",
   "schema": {
     "type": "object",
@@ -16,9 +16,9 @@
       "httpPort": {
         "title": "Somfy Protect HTTP API Port",
         "type": "integer",
-        "default": 8581,
+        "default": 8582,
         "required": false,
-        "description": "The HTTP port that the Somfy Protect plugin is listening on. Must match the httpPort setting in Somfy Protect plugin."
+        "description": "The HTTP port that the Somfy Protect plugin is listening on. Must match the httpPort setting in Somfy Protect plugin. Note: Port 8581 is used by Homebridge Config UI."
       },
       "httpToken": {
         "title": "HTTP API Token (Optional)",
@@ -39,6 +39,7 @@
       "items": [
         {
           "key": "httpPort",
+          "type": "number",
           "description": "This must match the httpPort configured in the Somfy Protect plugin settings."
         },
         {

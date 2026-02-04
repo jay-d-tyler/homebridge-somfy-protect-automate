@@ -29,7 +29,7 @@ This plugin requires the main Somfy Protect plugin (v2.2.0+) to be installed and
 ### Enable HTTP API in Somfy Protect Plugin:
 
 1. Go to Somfy Protect plugin settings
-2. Set `httpPort` to `8581` (or any available port)
+2. Set `httpPort` to `8582` (recommended, as 8581 is used by Homebridge Config UI)
 3. Optionally set `httpToken` for authentication
 4. Restart Homebridge
 
@@ -62,7 +62,7 @@ Add this platform to your Homebridge `config.json`:
     {
       "platform": "SomfyProtectAutomate",
       "name": "Somfy Protect Automate",
-      "httpPort": 8581,
+      "httpPort": 8582,
       "httpToken": "optional-secret-token"
     }
   ]
@@ -75,7 +75,7 @@ Add this platform to your Homebridge `config.json`:
 |--------|------|----------|---------|-------------|
 | `platform` | string | Yes | `SomfyProtectAutomate` | Must be `SomfyProtectAutomate` |
 | `name` | string | No | `Somfy Protect Automate` | The name that appears in Homebridge logs |
-| `httpPort` | number | No | `8581` | Port the Somfy Protect HTTP API is listening on |
+| `httpPort` | number | No | `8582` | Port the Somfy Protect HTTP API is listening on (Note: 8581 is used by Homebridge Config UI) |
 | `httpToken` | string | No | - | Optional authentication token (must match Somfy Protect plugin) |
 
 ## Usage

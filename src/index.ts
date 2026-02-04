@@ -34,9 +34,12 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
-    this.log.info('=== Somfy Protect Automate v1.0.10 Initializing ===');
+    this.log.info('=== Somfy Protect Automate v2.0.5 Initializing ===');
     this.log.info('Platform name:', this.config.name);
-    this.log.info('Alarm name configured:', this.config.alarmName || '(not set)');
+    this.log.info('HTTP API port:', this.config.httpPort || 8582);
+    if (this.config.httpToken) {
+      this.log.info('HTTP API authentication: enabled');
+    }
 
     this.api.on('didFinishLaunching', () => {
       this.log.info('Homebridge finished launching, discovering devices...');
@@ -45,12 +48,17 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   }
 
   configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
+    this.log.info('Loading accessory from cache:', accessory.displayName, 'UUID:', accessory.UUID);
     this.accessories.push(accessory);
   }
 
   discoverDevices() {
     this.log.info('Starting device discovery...');
+    this.log.info(`Total cached accessories: ${this.accessories.length}`);
+    this.accessories.forEach(acc => {
+      this.log.info(`  - Cached: "${acc.displayName}" (UUID: ${acc.UUID})`);
+    });
+
     const buttonLabel = 'Disarm Somfy Protect';
     const uuid = this.api.hap.uuid.generate(buttonLabel);
     this.log.info(`Generated UUID for "${buttonLabel}": ${uuid}`);
@@ -60,9 +68,17 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
     if (oldAccessoriesToRemove.length > 0) {
       this.log.info(`Removing ${oldAccessoriesToRemove.length} old cached accessory(ies)...`);
       oldAccessoriesToRemove.forEach(acc => {
-        this.log.info(`  - Removing: "${acc.displayName}"`);
+        this.log.info(`  - Removing: "${acc.displayName}" (UUID: ${acc.UUID})`);
+        // Remove from our local array
+        const index = this.accessories.indexOf(acc);
+        if (index > -1) {
+          this.accessories.splice(index, 1);
+        }
       });
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, oldAccessoriesToRemove);
+      this.log.info('✓ Old accessories removed');
+    } else {
+      this.log.info('No old accessories to remove');
     }
 
     const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
@@ -142,7 +158,7 @@ class SomfyDisarmSwitch {
 
   async disarmSomfyAlarm() {
     try {
-      const port = this.platform.config.httpPort || 8581;
+      const port = this.platform.config.httpPort || 8582;
       const token = this.platform.config.httpToken;
       const url = `http://localhost:${port}/disarm`;
 
@@ -166,14 +182,35 @@ class SomfyDisarmSwitch {
         return;
       }
 
+      // Check if the response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        this.platform.log.error(`HTTP API returned non-JSON response (${contentType || 'unknown type'})`);
+        this.platform.log.error('Response preview:', responseText.substring(0, 200));
+
+        // Check if this looks like Homebridge Config UI (port conflict)
+        if (responseText.includes('<!doctype html>') && responseText.includes('Homebridge')) {
+          this.platform.log.error('⚠️  Port conflict detected! The port is being used by Homebridge Config UI.');
+          this.platform.log.error(`Make sure the Somfy Protect plugin HTTP API is configured on port ${port} (not 8581).`);
+          this.platform.log.error('Port 8581 is reserved for Homebridge Config UI.');
+        } else {
+          this.platform.log.error('Make sure the Somfy Protect plugin HTTP API is properly configured.');
+        }
+        return;
+      }
+
       const result = await response.json();
       this.platform.log.info('✓ Successfully disarmed alarm via HTTP API');
-      this.platform.log.info(`Response: ${JSON.stringify(result)}`);
+      if (result && typeof result === 'object') {
+        this.platform.log.info(`Response: ${JSON.stringify(result)}`);
+      }
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('ECONNREFUSED')) {
-          this.platform.log.error(`Could not connect to Somfy Protect HTTP API on port ${this.platform.config.httpPort || 8581}`);
+          this.platform.log.error(`Could not connect to Somfy Protect HTTP API on port ${this.platform.config.httpPort || 8582}`);
           this.platform.log.error('Make sure the Somfy Protect plugin is running and HTTP API is enabled.');
+          this.platform.log.error('Check that the httpPort in Somfy Protect plugin matches this configuration.');
         } else {
           this.platform.log.error('Error calling Somfy Protect HTTP API:', error.message);
         }

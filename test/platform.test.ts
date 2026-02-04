@@ -47,28 +47,32 @@ describe('SomfyProtectAutomatePlatform', () => {
     mockConfig = {
       platform: 'SomfyProtectAutomate',
       name: 'Somfy Protect Automate',
-      buttonLabel: 'Disarm Somfy',
+      httpPort: 8582,
+      httpToken: 'test-token',
     };
   });
 
   describe('Platform Initialization', () => {
     it('should initialize with default configuration', () => {
-      // This is a placeholder test
-      // Once the plugin is fully implemented, we can add more specific tests
       expect(mockConfig.platform).toBe('SomfyProtectAutomate');
       expect(mockConfig.name).toBe('Somfy Protect Automate');
-      expect(mockConfig.buttonLabel).toBe('Disarm Somfy');
     });
 
-    it('should have correct button label configuration', () => {
-      expect(mockConfig.buttonLabel).toBeDefined();
-      expect(typeof mockConfig.buttonLabel).toBe('string');
+    it('should have HTTP API configuration', () => {
+      expect(mockConfig.httpPort).toBeDefined();
+      expect(typeof mockConfig.httpPort).toBe('number');
+      expect(mockConfig.httpPort).toBe(8582);
+    });
+
+    it('should have optional HTTP token configuration', () => {
+      expect(mockConfig.httpToken).toBeDefined();
+      expect(typeof mockConfig.httpToken).toBe('string');
     });
   });
 
   describe('UUID Generation', () => {
     it('should generate UUID for button label', () => {
-      const buttonLabel = 'Disarm Somfy';
+      const buttonLabel = 'Disarm Somfy Protect';
       const uuid = mockApi.hap.uuid.generate(buttonLabel);
       expect(uuid).toBe(`uuid-${buttonLabel}`);
       expect(mockApi.hap.uuid.generate).toHaveBeenCalledWith(buttonLabel);
