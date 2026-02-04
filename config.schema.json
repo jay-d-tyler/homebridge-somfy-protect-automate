@@ -2,7 +2,7 @@
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm.",
+  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm.\n\n⚠️ **IMPORTANT:** Both this plugin and the Somfy Protect plugin must run on the **Default Bridge** (not child bridges) for cross-plugin communication to work. Go to each plugin's settings → Bridge Settings → Select \"Default Bridge\".",
   "footerDisplay": "💡 **Tip:** Find your alarm's exact name in the Home app, then enter it above. You can rename the switch in the Home app if desired.",
   "schema": {
     "type": "object",

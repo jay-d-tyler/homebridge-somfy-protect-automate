@@ -27,6 +27,20 @@ This plugin requires the main Somfy Protect plugin to be installed and configure
 
 Make sure your Somfy Protect alarm is working in HomeKit before installing this automation helper.
 
+## ⚠️ Important: Bridge Configuration
+
+**Both plugins must run on the Default Bridge (not child bridges)** for cross-plugin communication to work.
+
+### How to Configure:
+
+1. In Homebridge Config UI X, go to **Plugins**
+2. Click on **Somfy Protect** → Settings (gear icon)
+3. Under **Bridge Settings**, select **"Default Bridge"**
+4. Do the same for **Somfy Protect Automate**
+5. Restart Homebridge
+
+**Why?** Child bridges isolate plugins from each other. Since this plugin needs to access the Somfy Protect alarm accessory, both must share the same bridge (the main one).
+
 ## Installation
 
 ### Option 1: Homebridge Config UI X (Recommended)
@@ -54,7 +68,7 @@ Add this platform to your Homebridge `config.json`:
     {
       "platform": "SomfyProtectAutomate",
       "name": "Somfy Protect Automate",
-      "buttonLabel": "Disarm Somfy"
+      "alarmName": "Somfy Protect"
     }
   ]
 }
@@ -65,8 +79,8 @@ Add this platform to your Homebridge `config.json`:
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `platform` | string | Yes | `SomfyProtectAutomate` | Must be `SomfyProtectAutomate` |
-| `name` | string | Yes | `Somfy Protect Automate` | The name that appears in Homebridge logs |
-| `buttonLabel` | string | No | `Disarm Somfy` | The name of the switch in the Home app |
+| `name` | string | No | `Somfy Protect Automate` | The name that appears in Homebridge logs |
+| `alarmName` | string | Yes | `Somfy Protect` | The exact name of your Somfy Protect alarm as shown in the Home app |
 
 ## Usage
 
