@@ -148,32 +148,39 @@ class SomfyDisarmSwitch {
 
       this.platform.log.info(`Attempting to disarm Somfy Protect alarm: "${this.platform.config.alarmName}"...`);
 
-      // Get all accessories from Homebridge
-      // Note: platformAccessories is not in the public API types but exists at runtime
-      const allAccessories = (this.platform.api as unknown as { platformAccessories: PlatformAccessory[] }).platformAccessories || [];
+      // Access the HAP bridge directly instead of platformAccessories
+      // The bridge is stored in the API object but not exposed in types
+      const homebridgeAPI = this.platform.api as any;
 
-      this.platform.log.info(`Searching through ${allAccessories.length} total accessories in Homebridge...`);
+      if (!homebridgeAPI._bridge) {
+        this.platform.log.error('Could not access Homebridge bridge instance');
+        return;
+      }
+
+      const bridge = homebridgeAPI._bridge;
+      const bridgedAccessories = bridge.bridgedAccessories || [];
+
+      this.platform.log.info(`Searching through ${bridgedAccessories.length} HAP accessories on the bridge...`);
 
       // Log all accessory names for debugging
-      if (allAccessories.length > 0) {
+      if (bridgedAccessories.length > 0) {
         this.platform.log.info('Available accessories:');
-        allAccessories.forEach((acc, index) => {
+        bridgedAccessories.forEach((acc: any, index: number) => {
           this.platform.log.info(`  ${index + 1}. "${acc.displayName}"`);
         });
       } else {
-        this.platform.log.warn('No accessories found in platformAccessories array.');
-        this.platform.log.warn('This likely means the Homebridge API does not expose other plugins\' accessories.');
-        this.platform.log.warn('You may need to use a different approach to control your alarm.');
+        this.platform.log.error('No accessories found on the bridge.');
+        this.platform.log.error('Make sure both plugins are running on the Default Bridge (not child bridges).');
         return;
       }
 
       // Look for the specific alarm by name (exact match)
-      const targetAccessory = allAccessories.find(acc => acc.displayName === this.platform.config.alarmName);
+      const targetAccessory = bridgedAccessories.find((acc: any) => acc.displayName === this.platform.config.alarmName);
 
       if (!targetAccessory) {
         this.platform.log.error(`Could not find alarm with name "${this.platform.config.alarmName}"`);
         this.platform.log.error('Available accessories:');
-        allAccessories.forEach(acc => {
+        bridgedAccessories.forEach((acc: any) => {
           this.platform.log.error(`  - "${acc.displayName}"`);
         });
         this.platform.log.error('Please update the "alarmName" setting to match exactly.');
@@ -184,10 +191,12 @@ class SomfyDisarmSwitch {
 
       // List all services on this accessory
       const services = targetAccessory.services;
-      this.platform.log.info(`  Services: ${services.map(s => s.displayName || s.UUID).join(', ')}`);
+      this.platform.log.info(`  Services: ${services.map((s: any) => s.displayName || s.UUID).join(', ')}`);
 
       // Look for SecuritySystem service
-      const securityService = targetAccessory.getService(this.platform.Service.SecuritySystem);
+      const securityService = services.find((s: any) =>
+        s.UUID === this.platform.Service.SecuritySystem.UUID,
+      );
 
       if (!securityService) {
         this.platform.log.error(`Accessory "${targetAccessory.displayName}" does not have a SecuritySystem service`);
@@ -198,8 +207,8 @@ class SomfyDisarmSwitch {
       this.platform.log.info('Found SecuritySystem service');
 
       // Get the target state characteristic
-      const targetStateChar = securityService.getCharacteristic(
-        this.platform.Characteristic.SecuritySystemTargetState,
+      const targetStateChar = securityService.characteristics.find((c: any) =>
+        c.UUID === this.platform.Characteristic.SecuritySystemTargetState.UUID,
       );
 
       if (!targetStateChar) {
@@ -209,7 +218,9 @@ class SomfyDisarmSwitch {
 
       // Set to DISARM (value 3)
       const DISARM = this.platform.Characteristic.SecuritySystemTargetState.DISARM;
-      await targetStateChar.setValue(DISARM);
+
+      this.platform.log.info(`Setting SecuritySystemTargetState to DISARM (${DISARM})...`);
+      targetStateChar.setValue(DISARM);
 
       this.platform.log.info(`✓ Successfully sent DISARM command to "${targetAccessory.displayName}"`);
     } catch (error) {
