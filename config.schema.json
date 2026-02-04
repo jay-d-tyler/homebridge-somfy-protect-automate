@@ -17,7 +17,8 @@
         "title": "Somfy Protect Alarm Name",
         "type": "string",
         "required": true,
-        "placeholder": "e.g., Home Alarm",
+        "default": "Somfy Protect",
+        "placeholder": "Somfy Protect",
         "description": "The exact name of your Somfy Protect alarm as it appears in the Home app. Case-sensitive."
       }
     }

@@ -95,17 +95,18 @@ class SomfyDisarmSwitch {
 
   async setOn(value: CharacteristicValue) {
     const isOn = value as boolean;
-    this.platform.log.debug('Set Characteristic On ->', isOn);
+    this.platform.log.info('Switch triggered:', isOn ? 'ON' : 'OFF');
 
     if (isOn) {
       // When switch is turned on, disarm the alarm
+      this.platform.log.info('Activating disarm sequence...');
       await this.disarmSomfyAlarm();
 
       // Reset the switch to off after a short delay (stateless behavior)
       setTimeout(() => {
         this.switchState = false;
         this.service.updateCharacteristic(this.platform.Characteristic.On, false);
-        this.platform.log.debug('Switch reset to OFF (stateless)');
+        this.platform.log.info('Switch reset to OFF (stateless)');
       }, 1000);
     }
 
