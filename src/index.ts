@@ -153,7 +153,7 @@ class SomfyDisarmSwitch {
       };
 
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers.Authorization = `Bearer ${token}`;
       }
 
       const response = await fetch(url, {
