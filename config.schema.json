@@ -2,8 +2,8 @@
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm.\n\n⚠️ **IMPORTANT:** Both this plugin and the Somfy Protect plugin must run on the **Default Bridge** (not child bridges) for cross-plugin communication to work. Go to each plugin's settings → Bridge Settings → Select \"Default Bridge\".",
-  "footerDisplay": "💡 **Tip:** Find your alarm's exact name in the Home app, then enter it above. You can rename the switch in the Home app if desired.",
+  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that communicates with the Somfy Protect plugin's HTTP API to disarm your alarm via HomeKit automations.\n\n⚠️ **IMPORTANT:** The Somfy Protect plugin must have the HTTP API enabled (httpPort setting). Both plugins can run on child bridges.",
+  "footerDisplay": "💡 **Tip:** Make sure the HTTP port and token match what you configured in the Somfy Protect plugin settings.",
   "schema": {
     "type": "object",
     "properties": {
@@ -13,25 +13,37 @@
         "default": "Somfy Protect Automate",
         "required": false
       },
-      "alarmName": {
-        "title": "Somfy Protect Alarm Name",
+      "httpPort": {
+        "title": "Somfy Protect HTTP API Port",
+        "type": "integer",
+        "default": 8581,
+        "required": false,
+        "description": "The HTTP port that the Somfy Protect plugin is listening on. Must match the httpPort setting in Somfy Protect plugin."
+      },
+      "httpToken": {
+        "title": "HTTP API Token (Optional)",
         "type": "string",
-        "required": true,
-        "default": "Somfy Protect",
-        "placeholder": "Somfy Protect",
-        "description": "The exact name of your Somfy Protect alarm as it appears in the Home app. Case-sensitive."
+        "required": false,
+        "description": "The authentication token if you configured httpToken in the Somfy Protect plugin. Leave blank if no token is set.",
+        "x-schema-form": {
+          "type": "password"
+        }
       }
     }
   },
   "layout": [
     {
       "type": "fieldset",
-      "title": "Configuration",
+      "title": "HTTP API Configuration",
       "expandable": false,
       "items": [
         {
-          "key": "alarmName",
-          "description": "Open the Home app, find your Somfy Protect alarm, and copy its exact name here."
+          "key": "httpPort",
+          "description": "This must match the httpPort configured in the Somfy Protect plugin settings."
+        },
+        {
+          "key": "httpToken",
+          "description": "Optional security token. Only needed if you set httpToken in Somfy Protect plugin."
         }
       ]
     }

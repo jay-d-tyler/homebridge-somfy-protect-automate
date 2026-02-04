@@ -14,32 +14,26 @@ This plugin creates a workaround by providing a **stateless switch** that, when 
 ## Features
 
 - 🔘 **Stateless Switch**: Acts like a button that automatically resets after use
-- 🔍 **Auto-Detection**: Automatically finds your Somfy Protect alarm accessory
+- 🌐 **HTTP API Communication**: Uses REST API for reliable cross-plugin communication
 - 🔒 **One-Way Operation**: Only disarms (prevents accidental arming via automation)
 - ⚡ **Instant Response**: Triggers immediately when activated
 - 🎯 **Simple Setup**: Minimal configuration required
+- 🔐 **Optional Security**: Supports token-based authentication
 
 ## Prerequisites
 
-This plugin requires the main Somfy Protect plugin to be installed and configured:
+This plugin requires the main Somfy Protect plugin (v2.2.0+) to be installed and configured with HTTP API enabled:
 
 - [@jay-d-tyler/homebridge-somfy-protect](https://github.com/jay-d-tyler/homebridge-somfy-protect)
 
+### Enable HTTP API in Somfy Protect Plugin:
+
+1. Go to Somfy Protect plugin settings
+2. Set `httpPort` to `8581` (or any available port)
+3. Optionally set `httpToken` for authentication
+4. Restart Homebridge
+
 Make sure your Somfy Protect alarm is working in HomeKit before installing this automation helper.
-
-## ⚠️ Important: Bridge Configuration
-
-**Both plugins must run on the Default Bridge (not child bridges)** for cross-plugin communication to work.
-
-### How to Configure:
-
-1. In Homebridge Config UI X, go to **Plugins**
-2. Click on **Somfy Protect** → Settings (gear icon)
-3. Under **Bridge Settings**, select **"Default Bridge"**
-4. Do the same for **Somfy Protect Automate**
-5. Restart Homebridge
-
-**Why?** Child bridges isolate plugins from each other. Since this plugin needs to access the Somfy Protect alarm accessory, both must share the same bridge (the main one).
 
 ## Installation
 
@@ -68,7 +62,8 @@ Add this platform to your Homebridge `config.json`:
     {
       "platform": "SomfyProtectAutomate",
       "name": "Somfy Protect Automate",
-      "alarmName": "Somfy Protect"
+      "httpPort": 8581,
+      "httpToken": "optional-secret-token"
     }
   ]
 }
@@ -80,7 +75,8 @@ Add this platform to your Homebridge `config.json`:
 |--------|------|----------|---------|-------------|
 | `platform` | string | Yes | `SomfyProtectAutomate` | Must be `SomfyProtectAutomate` |
 | `name` | string | No | `Somfy Protect Automate` | The name that appears in Homebridge logs |
-| `alarmName` | string | Yes | `Somfy Protect` | The exact name of your Somfy Protect alarm as shown in the Home app |
+| `httpPort` | number | No | `8581` | Port the Somfy Protect HTTP API is listening on |
+| `httpToken` | string | No | - | Optional authentication token (must match Somfy Protect plugin) |
 
 ## Usage
 

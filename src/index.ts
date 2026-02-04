@@ -14,7 +14,8 @@ const PLATFORM_NAME = 'SomfyProtectAutomate';
 
 interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
   name?: string;
-  alarmName: string;
+  httpPort?: number;
+  httpToken?: string;
 }
 
 export default (api: API) => {
@@ -141,106 +142,46 @@ class SomfyDisarmSwitch {
 
   async disarmSomfyAlarm() {
     try {
-      if (!this.platform.config.alarmName) {
-        this.platform.log.error('Alarm name not configured! Please set "alarmName" in the plugin configuration.');
+      const port = this.platform.config.httpPort || 8581;
+      const token = this.platform.config.httpToken;
+      const url = `http://localhost:${port}/disarm`;
+
+      this.platform.log.info(`Sending disarm command to Somfy Protect HTTP API at ${url}...`);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.platform.log.error(`HTTP API returned error ${response.status}: ${errorText}`);
+        this.platform.log.error('Make sure the Somfy Protect plugin HTTP API is enabled and configured correctly.');
         return;
       }
 
-      this.platform.log.info(`Attempting to disarm Somfy Protect alarm: "${this.platform.config.alarmName}"...`);
-
-      // Access the HAP bridge directly instead of platformAccessories
-      // The bridge is stored in the API object but not exposed in types
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const homebridgeAPI = this.platform.api as any;
-
-      // Debug: Log available properties on the API object
-      this.platform.log.info('Checking API object for bridge access...');
-      this.platform.log.info('Available properties:', Object.keys(homebridgeAPI).join(', '));
-
-      // Try different possible locations for the bridge
-      const bridge = homebridgeAPI._bridge || homebridgeAPI.bridge || homebridgeAPI._server?.bridge;
-
-      if (!bridge) {
-        this.platform.log.error('Could not access Homebridge bridge instance');
-        this.platform.log.error('This plugin requires both plugins to run on the Default Bridge');
-        return;
-      }
-
-      this.platform.log.info('Successfully accessed bridge instance');
-
-      const bridgedAccessories = bridge.bridgedAccessories || [];
-
-      this.platform.log.info(`Searching through ${bridgedAccessories.length} HAP accessories on the bridge...`);
-
-      // Log all accessory names for debugging
-      if (bridgedAccessories.length > 0) {
-        this.platform.log.info('Available accessories:');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        bridgedAccessories.forEach((acc: any, index: number) => {
-          this.platform.log.info(`  ${index + 1}. "${acc.displayName}"`);
-        });
-      } else {
-        this.platform.log.error('No accessories found on the bridge.');
-        this.platform.log.error('Make sure both plugins are running on the Default Bridge (not child bridges).');
-        return;
-      }
-
-      // Look for the specific alarm by name (exact match)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const targetAccessory = bridgedAccessories.find((acc: any) => acc.displayName === this.platform.config.alarmName);
-
-      if (!targetAccessory) {
-        this.platform.log.error(`Could not find alarm with name "${this.platform.config.alarmName}"`);
-        this.platform.log.error('Available accessories:');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        bridgedAccessories.forEach((acc: any) => {
-          this.platform.log.error(`  - "${acc.displayName}"`);
-        });
-        this.platform.log.error('Please update the "alarmName" setting to match exactly.');
-        return;
-      }
-
-      this.platform.log.info(`Found target accessory: "${targetAccessory.displayName}"`);
-
-      // List all services on this accessory
-      const services = targetAccessory.services;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.platform.log.info(`  Services: ${services.map((s: any) => s.displayName || s.UUID).join(', ')}`);
-
-      // Look for SecuritySystem service
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const securityService = services.find((s: any) =>
-        s.UUID === this.platform.Service.SecuritySystem.UUID,
-      );
-
-      if (!securityService) {
-        this.platform.log.error(`Accessory "${targetAccessory.displayName}" does not have a SecuritySystem service`);
-        this.platform.log.error('Make sure this is the correct alarm accessory.');
-        return;
-      }
-
-      this.platform.log.info('Found SecuritySystem service');
-
-      // Get the target state characteristic
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const targetStateChar = securityService.characteristics.find((c: any) =>
-        c.UUID === this.platform.Characteristic.SecuritySystemTargetState.UUID,
-      );
-
-      if (!targetStateChar) {
-        this.platform.log.error('SecuritySystem service does not have TargetState characteristic');
-        return;
-      }
-
-      // Set to DISARM (value 3)
-      const DISARM = this.platform.Characteristic.SecuritySystemTargetState.DISARM;
-
-      this.platform.log.info(`Setting SecuritySystemTargetState to DISARM (${DISARM})...`);
-      targetStateChar.setValue(DISARM);
-
-      this.platform.log.info(`✓ Successfully sent DISARM command to "${targetAccessory.displayName}"`);
+      const result = await response.json();
+      this.platform.log.info('✓ Successfully disarmed alarm via HTTP API');
+      this.platform.log.info(`Response: ${JSON.stringify(result)}`);
     } catch (error) {
-      this.platform.log.error('Error disarming Somfy alarm:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('ECONNREFUSED')) {
+          this.platform.log.error(`Could not connect to Somfy Protect HTTP API on port ${this.platform.config.httpPort || 8581}`);
+          this.platform.log.error('Make sure the Somfy Protect plugin is running and HTTP API is enabled.');
+        } else {
+          this.platform.log.error('Error calling Somfy Protect HTTP API:', error.message);
+        }
+      } else {
+        this.platform.log.error('Unknown error calling Somfy Protect HTTP API:', error);
+      }
     }
   }
 }
