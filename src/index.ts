@@ -150,6 +150,7 @@ class SomfyDisarmSwitch {
 
       // Access the HAP bridge directly instead of platformAccessories
       // The bridge is stored in the API object but not exposed in types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const homebridgeAPI = this.platform.api as any;
 
       if (!homebridgeAPI._bridge) {
@@ -165,6 +166,7 @@ class SomfyDisarmSwitch {
       // Log all accessory names for debugging
       if (bridgedAccessories.length > 0) {
         this.platform.log.info('Available accessories:');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bridgedAccessories.forEach((acc: any, index: number) => {
           this.platform.log.info(`  ${index + 1}. "${acc.displayName}"`);
         });
@@ -175,11 +177,13 @@ class SomfyDisarmSwitch {
       }
 
       // Look for the specific alarm by name (exact match)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const targetAccessory = bridgedAccessories.find((acc: any) => acc.displayName === this.platform.config.alarmName);
 
       if (!targetAccessory) {
         this.platform.log.error(`Could not find alarm with name "${this.platform.config.alarmName}"`);
         this.platform.log.error('Available accessories:');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bridgedAccessories.forEach((acc: any) => {
           this.platform.log.error(`  - "${acc.displayName}"`);
         });
@@ -191,9 +195,11 @@ class SomfyDisarmSwitch {
 
       // List all services on this accessory
       const services = targetAccessory.services;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.platform.log.info(`  Services: ${services.map((s: any) => s.displayName || s.UUID).join(', ')}`);
 
       // Look for SecuritySystem service
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const securityService = services.find((s: any) =>
         s.UUID === this.platform.Service.SecuritySystem.UUID,
       );
@@ -207,6 +213,7 @@ class SomfyDisarmSwitch {
       this.platform.log.info('Found SecuritySystem service');
 
       // Get the target state characteristic
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const targetStateChar = securityService.characteristics.find((c: any) =>
         c.UUID === this.platform.Characteristic.SecuritySystemTargetState.UUID,
       );
