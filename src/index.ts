@@ -14,6 +14,7 @@ const PLATFORM_NAME = 'SomfyProtectAutomate';
 
 interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
   name?: string;
+  alarmName: string;
 }
 
 export default (api: API) => {
@@ -117,7 +118,12 @@ class SomfyDisarmSwitch {
 
   async disarmSomfyAlarm() {
     try {
-      this.platform.log.info('Attempting to disarm Somfy Protect alarm...');
+      if (!this.platform.config.alarmName) {
+        this.platform.log.error('Alarm name not configured! Please set "alarmName" in the plugin configuration.');
+        return;
+      }
+
+      this.platform.log.info(`Attempting to disarm Somfy Protect alarm: "${this.platform.config.alarmName}"...`);
 
       // Get all accessories from Homebridge
       // Note: platformAccessories is not in the public API types but exists at runtime
@@ -127,57 +133,62 @@ class SomfyDisarmSwitch {
 
       // Log all accessory names for debugging
       if (allAccessories.length > 0) {
-        this.platform.log.info('Found accessories:');
+        this.platform.log.info('Available accessories:');
         allAccessories.forEach((acc, index) => {
-          this.platform.log.info(`  ${index + 1}. "${acc.displayName}" (UUID: ${acc.UUID})`);
+          this.platform.log.info(`  ${index + 1}. "${acc.displayName}"`);
         });
       } else {
-        this.platform.log.warn('No accessories found in platformAccessories array. This might mean:');
-        this.platform.log.warn('  1. Somfy Protect plugin is not installed');
-        this.platform.log.warn('  2. Somfy Protect has no cached accessories yet');
-        this.platform.log.warn('  3. The platformAccessories API is not accessible');
+        this.platform.log.warn('No accessories found in platformAccessories array.');
+        this.platform.log.warn('This likely means the Homebridge API does not expose other plugins\' accessories.');
+        this.platform.log.warn('You may need to use a different approach to control your alarm.');
+        return;
       }
 
-      // Look for Somfy Protect security system accessories
-      for (const accessory of allAccessories) {
-        // Check if this is a Somfy Protect accessory
-        const context = accessory.context as Record<string, unknown>;
-        const isSomfyProtect =
-          accessory.displayName.toLowerCase().includes('somfy') ||
-          accessory.displayName.toLowerCase().includes('protect') ||
-          (context && context.manufacturer === 'Somfy');
+      // Look for the specific alarm by name (exact match)
+      const targetAccessory = allAccessories.find(acc => acc.displayName === this.platform.config.alarmName);
 
-        if (isSomfyProtect) {
-          this.platform.log.info(`Found potential Somfy accessory: "${accessory.displayName}"`);
-
-          // List all services on this accessory
-          const services = accessory.services;
-          this.platform.log.info(`  Services on this accessory: ${services.map(s => s.displayName || s.UUID).join(', ')}`);
-
-          // Look for SecuritySystem service
-          const securityService = accessory.getService(this.platform.Service.SecuritySystem);
-
-          if (securityService) {
-            this.platform.log.info(`Found Somfy Protect security system: ${accessory.displayName}`);
-
-            // Get the target state characteristic
-            const targetStateChar = securityService.getCharacteristic(
-              this.platform.Characteristic.SecuritySystemTargetState,
-            );
-
-            if (targetStateChar) {
-              // Set to DISARM (value 3)
-              const DISARM = this.platform.Characteristic.SecuritySystemTargetState.DISARM;
-              await targetStateChar.setValue(DISARM);
-
-              this.platform.log.info(`Successfully sent DISARM command to ${accessory.displayName}`);
-              return; // Exit after successfully disarming the first alarm found
-            }
-          }
-        }
+      if (!targetAccessory) {
+        this.platform.log.error(`Could not find alarm with name "${this.platform.config.alarmName}"`);
+        this.platform.log.error('Available accessories:');
+        allAccessories.forEach(acc => {
+          this.platform.log.error(`  - "${acc.displayName}"`);
+        });
+        this.platform.log.error('Please update the "alarmName" setting to match exactly.');
+        return;
       }
 
-      this.platform.log.warn('No Somfy Protect security system found. Make sure @jay-d-tyler/homebridge-somfy-protect is installed and configured.');
+      this.platform.log.info(`Found target accessory: "${targetAccessory.displayName}"`);
+
+      // List all services on this accessory
+      const services = targetAccessory.services;
+      this.platform.log.info(`  Services: ${services.map(s => s.displayName || s.UUID).join(', ')}`);
+
+      // Look for SecuritySystem service
+      const securityService = targetAccessory.getService(this.platform.Service.SecuritySystem);
+
+      if (!securityService) {
+        this.platform.log.error(`Accessory "${targetAccessory.displayName}" does not have a SecuritySystem service`);
+        this.platform.log.error('Make sure this is the correct alarm accessory.');
+        return;
+      }
+
+      this.platform.log.info('Found SecuritySystem service');
+
+      // Get the target state characteristic
+      const targetStateChar = securityService.getCharacteristic(
+        this.platform.Characteristic.SecuritySystemTargetState,
+      );
+
+      if (!targetStateChar) {
+        this.platform.log.error('SecuritySystem service does not have TargetState characteristic');
+        return;
+      }
+
+      // Set to DISARM (value 3)
+      const DISARM = this.platform.Characteristic.SecuritySystemTargetState.DISARM;
+      await targetStateChar.setValue(DISARM);
+
+      this.platform.log.info(`✓ Successfully sent DISARM command to "${targetAccessory.displayName}"`);
     } catch (error) {
       this.platform.log.error('Error disarming Somfy alarm:', error);
     }

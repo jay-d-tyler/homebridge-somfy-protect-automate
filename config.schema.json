@@ -2,8 +2,8 @@
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin automatically creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm. No configuration needed!",
-  "footerDisplay": "💡 **Tip:** The switch will automatically find your Somfy Protect alarm. You can rename the switch in the Home app if desired.",
+  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that can be used in HomeKit automations to disarm your Somfy Protect alarm.",
+  "footerDisplay": "💡 **Tip:** Find your alarm's exact name in the Home app, then enter it above. You can rename the switch in the Home app if desired.",
   "schema": {
     "type": "object",
     "properties": {
@@ -12,7 +12,27 @@
         "type": "string",
         "default": "Somfy Protect Automate",
         "required": false
+      },
+      "alarmName": {
+        "title": "Somfy Protect Alarm Name",
+        "type": "string",
+        "required": true,
+        "placeholder": "e.g., Home Alarm",
+        "description": "The exact name of your Somfy Protect alarm as it appears in the Home app. Case-sensitive."
       }
     }
-  }
+  },
+  "layout": [
+    {
+      "type": "fieldset",
+      "title": "Configuration",
+      "expandable": false,
+      "items": [
+        {
+          "key": "alarmName",
+          "description": "Open the Home app, find your Somfy Protect alarm, and copy its exact name here."
+        }
+      ]
+    }
+  ]
 }
