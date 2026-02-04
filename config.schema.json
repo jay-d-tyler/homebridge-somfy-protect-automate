@@ -1,0 +1,38 @@
+{
+  "pluginAlias": "SomfyProtectAutomate",
+  "pluginType": "platform",
+  "singular": false,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Somfy Protect Automate",
+        "required": true,
+        "description": "The name that will appear in your Homebridge log."
+      },
+      "buttonLabel": {
+        "title": "Button Label",
+        "type": "string",
+        "default": "Disarm Somfy",
+        "required": false,
+        "description": "The name of the switch that will appear in HomeKit."
+      }
+    }
+  },
+  "layout": [
+    {
+      "type": "fieldset",
+      "title": "Plugin Settings",
+      "expandable": false,
+      "items": [
+        "name",
+        {
+          "key": "buttonLabel",
+          "description": "This is the name that will appear in the Home app. You can use this switch in automations to disarm your Somfy Protect alarm."
+        }
+      ]
+    }
+  ]
+}
