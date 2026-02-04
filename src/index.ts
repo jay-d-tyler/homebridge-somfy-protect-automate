@@ -124,7 +124,20 @@ class SomfyDisarmSwitch {
       // Note: platformAccessories is not in the public API types but exists at runtime
       const allAccessories = (this.platform.api as unknown as { platformAccessories: PlatformAccessory[] }).platformAccessories || [];
 
-      this.platform.log.debug(`Searching through ${allAccessories.length} accessories...`);
+      this.platform.log.info(`Searching through ${allAccessories.length} total accessories in Homebridge...`);
+
+      // Log all accessory names for debugging
+      if (allAccessories.length > 0) {
+        this.platform.log.info('Found accessories:');
+        allAccessories.forEach((acc, index) => {
+          this.platform.log.info(`  ${index + 1}. "${acc.displayName}" (UUID: ${acc.UUID})`);
+        });
+      } else {
+        this.platform.log.warn('No accessories found in platformAccessories array. This might mean:');
+        this.platform.log.warn('  1. Somfy Protect plugin is not installed');
+        this.platform.log.warn('  2. Somfy Protect has no cached accessories yet');
+        this.platform.log.warn('  3. The platformAccessories API is not accessible');
+      }
 
       // Look for Somfy Protect security system accessories
       for (const accessory of allAccessories) {
@@ -136,7 +149,11 @@ class SomfyDisarmSwitch {
           (context && context.manufacturer === 'Somfy');
 
         if (isSomfyProtect) {
-          this.platform.log.debug(`Found potential Somfy accessory: ${accessory.displayName}`);
+          this.platform.log.info(`Found potential Somfy accessory: "${accessory.displayName}"`);
+
+          // List all services on this accessory
+          const services = accessory.services;
+          this.platform.log.info(`  Services on this accessory: ${services.map(s => s.displayName || s.UUID).join(', ')}`);
 
           // Look for SecuritySystem service
           const securityService = accessory.getService(this.platform.Service.SecuritySystem);
