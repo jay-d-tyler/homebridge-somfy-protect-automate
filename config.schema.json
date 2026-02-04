@@ -10,20 +10,17 @@
       "name": {
         "title": "Name",
         "type": "string",
-        "default": "Somfy Protect Automate",
-        "required": false
+        "default": "Somfy Protect Automate"
       },
       "httpPort": {
         "title": "Somfy Protect HTTP API Port",
         "type": "integer",
         "default": 8582,
-        "required": false,
         "description": "The HTTP port that the Somfy Protect plugin is listening on. Must match the httpPort setting in Somfy Protect plugin. Note: Port 8581 is used by Homebridge Config UI."
       },
       "httpToken": {
         "title": "HTTP API Token (Optional)",
         "type": "string",
-        "required": false,
         "description": "The authentication token if you configured httpToken in the Somfy Protect plugin. Leave blank if no token is set.",
         "x-schema-form": {
           "type": "password"
