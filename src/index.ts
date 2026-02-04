@@ -17,7 +17,7 @@ interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
   buttonLabel?: string;
 }
 
-export = (api: API) => {
+export default (api: API) => {
   api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SomfyProtectAutomatePlatform);
 };
 

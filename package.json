@@ -1,6 +1,7 @@
 {
   "name": "@jay-d-tyler/homebridge-somfy-protect-automate",
   "displayName": "Homebridge Somfy Protect Automate",
+  "type": "module",
   "version": "1.0.1",
   "private": false,
   "description": "A Homebridge plugin that provides a stateless switch to disarm Somfy Protect alarms via automations",
@@ -37,9 +38,9 @@
   "scripts": {
     "build": "rimraf ./dist && tsc",
     "lint": "eslint . --max-warnings=0",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "verify-build": "test -d dist && test -f dist/index.js || (echo 'ERROR: dist folder not built! Run npm run build first.' && exit 1)",
     "prepublishOnly": "npm run lint && npm run build && npm run verify-build",
     "watch": "npm run build && npm link && nodemon"

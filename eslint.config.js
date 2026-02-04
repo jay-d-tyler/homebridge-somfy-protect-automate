@@ -1,9 +1,9 @@
-const eslint = require('@eslint/js');
-const tseslint = require('typescript-eslint');
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-module.exports = tseslint.config(
+export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**', '*.config.js'],
+    ignores: ['dist/**', 'coverage/**', 'node_modules/**'],
   },
   {
     rules: {
@@ -27,7 +27,7 @@ module.exports = tseslint.config(
   {
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'commonjs',
+      sourceType: 'module',
     },
   },
   eslint.configs.recommended,
