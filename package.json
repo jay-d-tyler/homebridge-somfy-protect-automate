@@ -1,6 +1,6 @@
 {
   "name": "@jay-d-tyler/homebridge-somfy-protect-automate",
-  "displayName": "Homebridge Somfy Protect Automate",
+  "displayName": "Somfy Protect Automate",
   "type": "module",
   "version": "1.0.5",
   "private": false,
