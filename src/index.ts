@@ -153,12 +153,21 @@ class SomfyDisarmSwitch {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const homebridgeAPI = this.platform.api as any;
 
-      if (!homebridgeAPI._bridge) {
+      // Debug: Log available properties on the API object
+      this.platform.log.info('Checking API object for bridge access...');
+      this.platform.log.info('Available properties:', Object.keys(homebridgeAPI).join(', '));
+
+      // Try different possible locations for the bridge
+      const bridge = homebridgeAPI._bridge || homebridgeAPI.bridge || homebridgeAPI._server?.bridge;
+
+      if (!bridge) {
         this.platform.log.error('Could not access Homebridge bridge instance');
+        this.platform.log.error('This plugin requires both plugins to run on the Default Bridge');
         return;
       }
 
-      const bridge = homebridgeAPI._bridge;
+      this.platform.log.info('Successfully accessed bridge instance');
+
       const bridgedAccessories = bridge.bridgedAccessories || [];
 
       this.platform.log.info(`Searching through ${bridgedAccessories.length} HAP accessories on the bridge...`);
