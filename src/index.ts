@@ -34,7 +34,7 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
-    this.log.info('=== Somfy Protect Automate v2.0.6 Initializing ===');
+    this.log.info('=== Somfy Protect Automate v2.0.7 Initializing ===');
     this.log.info('Platform name:', this.config.name);
     this.log.info('HTTP API port:', this.config.httpPort || 8582);
     if (this.config.httpToken) {
