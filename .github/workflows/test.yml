@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -66,10 +66,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -86,9 +86,9 @@ jobs:
       - name: Check index.js exists
         run: test -f dist/index.js
 
-      - name: Verify no TypeScript files in dist
+      - name: Verify no TypeScript source files in dist
         run: |
-          if find dist -name "*.ts" | grep -q .; then
-            echo "Error: TypeScript files found in dist/"
+          if find dist -type f -name "*.ts" ! -name "*.d.ts" | grep -q .; then
+            echo "Error: TypeScript source files found in dist/"
             exit 1
           fi
