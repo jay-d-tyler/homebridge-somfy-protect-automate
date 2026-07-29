@@ -2,8 +2,8 @@
   "pluginAlias": "SomfyProtectAutomate",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "This plugin creates a switch called **Disarm Somfy Protect** that communicates with the Somfy Protect plugin's HTTP API to disarm your alarm via HomeKit automations.\n\n⚠️ **IMPORTANT:** The Somfy Protect plugin must have the HTTP API enabled (httpPort setting). Both plugins can run on child bridges.\n\n⚠️ **PORT NOTE:** Use port 8582 (default). Port 8581 is reserved for Homebridge Config UI.",
-  "footerDisplay": "💡 **Tip:** Make sure the HTTP port and token match what you configured in the Somfy Protect plugin settings.",
+  "headerDisplay": "This plugin creates three stateless switches: **Disarm Somfy Protect**, **Arm Somfy Protect for Away**, and **Arm Somfy Protect for Night**. They call the Somfy Protect plugin's local HTTP API, making all three alarm states available to HomeKit automations.\n\n⚠️ **IMPORTANT:** Install `@jay-d-tyler/homebridge-somfy-protect` version 2.3.0 or later. It must expose `POST /disarm`, `POST /arm/away`, and `POST /arm/night` on its configured HTTP port. Both plugins can run on child bridges.\n\n🔒 **SECURITY:** Configure the same strong HTTP token in both plugins.\n\n⚠️ **PORT NOTE:** Use port 8582 (default). Port 8581 is normally reserved for Homebridge Config UI.",
+  "footerDisplay": "💡 **Tip:** Make sure the HTTP port and token match what you configured in the Somfy Protect plugin settings, and keep its HTTP host on the default `127.0.0.1`.",
   "schema": {
     "type": "object",
     "properties": {
@@ -16,17 +16,23 @@
         "title": "Somfy Protect HTTP API Port",
         "type": "integer",
         "default": 8582,
+        "minimum": 1,
+        "maximum": 65535,
         "description": "The HTTP port that the Somfy Protect plugin is listening on. Must match the httpPort setting in Somfy Protect plugin. Note: Port 8581 is used by Homebridge Config UI."
       },
       "httpToken": {
-        "title": "HTTP API Token (Optional)",
+        "title": "HTTP API Token",
         "type": "string",
-        "description": "The authentication token if you configured httpToken in the Somfy Protect plugin. Leave blank if no token is set.",
+        "minLength": 1,
+        "description": "The authentication token configured in the Somfy Protect plugin. Both values must match.",
         "x-schema-form": {
           "type": "password"
         }
       }
-    }
+    },
+    "required": [
+      "httpToken"
+    ]
   },
   "layout": [
     {
@@ -41,7 +47,7 @@
         },
         {
           "key": "httpToken",
-          "description": "Optional security token. Only needed if you set httpToken in Somfy Protect plugin."
+          "description": "Required security token. This must match the httpToken configured in the Somfy Protect plugin."
         }
       ]
     }

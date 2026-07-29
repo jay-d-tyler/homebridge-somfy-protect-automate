@@ -1,28 +1,64 @@
 import {
   API,
+  Characteristic,
+  CharacteristicValue,
   DynamicPlatformPlugin,
   Logger,
   PlatformAccessory,
   PlatformConfig,
   Service,
-  Characteristic,
-  CharacteristicValue,
 } from 'homebridge';
 
 const PLUGIN_NAME = '@jay-d-tyler/homebridge-somfy-protect-automate';
 const PLATFORM_NAME = 'SomfyProtectAutomate';
+const HTTP_HOST = '127.0.0.1';
+const DEFAULT_HTTP_PORT = 8582;
+const REQUEST_TIMEOUT_MS = 10_000;
+const SWITCH_RESET_DELAY_MS = 1_000;
 
-interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
+export interface SomfyProtectAutomatePlatformConfig extends PlatformConfig {
   name?: string;
   httpPort?: number;
   httpToken?: string;
 }
 
+export interface SomfyAction {
+  id: 'disarm' | 'arm-away' | 'arm-night';
+  label: string;
+  endpoint: string;
+  logDescription: string;
+  serialNumber: string;
+}
+
+export const SOMFY_ACTIONS: readonly SomfyAction[] = [
+  {
+    id: 'disarm',
+    label: 'Disarm Somfy Protect',
+    endpoint: '/disarm',
+    logDescription: 'disarm Somfy Protect',
+    serialNumber: 'SPA-DISARM',
+  },
+  {
+    id: 'arm-away',
+    label: 'Arm Somfy Protect for Away',
+    endpoint: '/arm/away',
+    logDescription: 'arm Somfy Protect for Away',
+    serialNumber: 'SPA-ARM-AWAY',
+  },
+  {
+    id: 'arm-night',
+    label: 'Arm Somfy Protect for Night',
+    endpoint: '/arm/night',
+    logDescription: 'arm Somfy Protect for Night',
+    serialNumber: 'SPA-ARM-NIGHT',
+  },
+];
+
 export default (api: API) => {
   api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SomfyProtectAutomatePlatform);
 };
 
-class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
+export class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
   public readonly accessories: PlatformAccessory[] = [];
@@ -34,15 +70,17 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
-    this.log.info('=== Somfy Protect Automate v2.0.7 Initializing ===');
+    this.log.info('=== Somfy Protect Automate Initializing ===');
     this.log.info('Platform name:', this.config.name);
-    this.log.info('HTTP API port:', this.config.httpPort || 8582);
-    if (this.config.httpToken) {
+    this.log.info('HTTP API port:', this.config.httpPort ?? DEFAULT_HTTP_PORT);
+    if (this.config.httpToken?.trim()) {
       this.log.info('HTTP API authentication: enabled');
+    } else {
+      this.log.error('HTTP API authentication: missing required httpToken');
     }
 
     this.api.on('didFinishLaunching', () => {
-      this.log.info('Homebridge finished launching, discovering devices...');
+      this.log.info('Homebridge finished launching, discovering switches...');
       this.discoverDevices();
     });
   }
@@ -53,67 +91,62 @@ class SomfyProtectAutomatePlatform implements DynamicPlatformPlugin {
   }
 
   discoverDevices() {
-    this.log.info('Starting device discovery...');
-    this.log.info(`Total cached accessories: ${this.accessories.length}`);
-    this.accessories.forEach(acc => {
-      this.log.info(`  - Cached: "${acc.displayName}" (UUID: ${acc.UUID})`);
-    });
+    const expectedAccessories = new Map(
+      SOMFY_ACTIONS.map(action => [this.api.hap.uuid.generate(action.label), action]),
+    );
+    const obsoleteAccessories = this.accessories.filter(accessory => !expectedAccessories.has(accessory.UUID));
 
-    const buttonLabel = 'Disarm Somfy Protect';
-    const uuid = this.api.hap.uuid.generate(buttonLabel);
-    this.log.info(`Generated UUID for "${buttonLabel}": ${uuid}`);
-
-    // Clean up old accessories with different names
-    const oldAccessoriesToRemove = this.accessories.filter(acc => acc.UUID !== uuid);
-    if (oldAccessoriesToRemove.length > 0) {
-      this.log.info(`Removing ${oldAccessoriesToRemove.length} old cached accessory(ies)...`);
-      oldAccessoriesToRemove.forEach(acc => {
-        this.log.info(`  - Removing: "${acc.displayName}" (UUID: ${acc.UUID})`);
-        // Remove from our local array
-        const index = this.accessories.indexOf(acc);
-        if (index > -1) {
+    if (obsoleteAccessories.length > 0) {
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, obsoleteAccessories);
+      obsoleteAccessories.forEach(accessory => {
+        const index = this.accessories.indexOf(accessory);
+        if (index >= 0) {
           this.accessories.splice(index, 1);
         }
       });
-      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, oldAccessoriesToRemove);
-      this.log.info('✓ Old accessories removed');
-    } else {
-      this.log.info('No old accessories to remove');
+      this.log.info(`Removed ${obsoleteAccessories.length} obsolete cached accessory(ies)`);
     }
 
-    const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+    const newAccessories: PlatformAccessory[] = [];
 
-    if (existingAccessory) {
-      this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-      new SomfyDisarmSwitch(this, existingAccessory);
-    } else {
-      this.log.info('Adding new accessory:', buttonLabel);
-      const accessory = new this.api.platformAccessory(buttonLabel, uuid);
-      new SomfyDisarmSwitch(this, accessory);
-      this.log.info('Registering accessory with Homebridge...');
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      this.log.info('✓ Accessory registered successfully');
+    for (const [uuid, action] of expectedAccessories) {
+      let accessory = this.accessories.find(candidate => candidate.UUID === uuid);
+
+      if (accessory) {
+        this.log.info('Restoring switch from cache:', accessory.displayName);
+      } else {
+        accessory = new this.api.platformAccessory(action.label, uuid);
+        this.accessories.push(accessory);
+        newAccessories.push(accessory);
+        this.log.info('Adding switch:', action.label);
+      }
+
+      new SomfyActionSwitch(this, accessory, action);
+    }
+
+    if (newAccessories.length > 0) {
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories);
+      this.log.info(`Registered ${newAccessories.length} new accessory(ies)`);
     }
   }
 }
 
-class SomfyDisarmSwitch {
-  private service: Service;
+export class SomfyActionSwitch {
+  private readonly service: Service;
   private switchState = false;
+  private actionInFlight?: Promise<void>;
+  private resetTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private readonly platform: SomfyProtectAutomatePlatform,
     private readonly accessory: PlatformAccessory,
+    private readonly action: SomfyAction,
   ) {
-    this.platform.log.info(`Initializing switch: "${accessory.displayName}"`);
-
-    // Set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Jay Tyler')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Somfy Disarm Switch')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'SDS-001');
+      .setCharacteristic(this.platform.Characteristic.Model, 'Somfy Protect Automation Switch')
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, action.serialNumber);
 
-    // Get or create the switch service
     this.service = this.accessory.getService(this.platform.Service.Switch)
       || this.accessory.addService(this.platform.Service.Switch);
 
@@ -122,101 +155,114 @@ class SomfyDisarmSwitch {
       accessory.displayName,
     );
 
-    this.platform.log.info('Registering characteristic handlers...');
-
-    // Register handlers for the On characteristic
     this.service.getCharacteristic(this.platform.Characteristic.On)
       .onSet(this.setOn.bind(this))
       .onGet(this.getOn.bind(this));
-
-    this.platform.log.info('✓ Switch initialized and ready');
   }
 
-  async setOn(value: CharacteristicValue) {
-    const isOn = value as boolean;
-    this.platform.log.info('Switch triggered:', isOn ? 'ON' : 'OFF');
+  async setOn(value: CharacteristicValue): Promise<void> {
+    const isOn = Boolean(value);
 
-    if (isOn) {
-      // When switch is turned on, disarm the alarm
-      this.platform.log.info('Activating disarm sequence...');
-      await this.disarmSomfyAlarm();
-
-      // Reset the switch to off after a short delay (stateless behavior)
-      setTimeout(() => {
-        this.switchState = false;
-        this.service.updateCharacteristic(this.platform.Characteristic.On, false);
-        this.platform.log.info('Switch reset to OFF (stateless)');
-      }, 1000);
+    if (!isOn) {
+      this.switchState = false;
+      return;
     }
 
-    this.switchState = isOn;
+    this.switchState = true;
+
+    if (this.actionInFlight) {
+      this.platform.log.warn(`${this.action.label} is already in progress; ignoring duplicate trigger`);
+      await this.actionInFlight;
+      return;
+    }
+
+    const request = this.callSomfyHttpApi();
+    this.actionInFlight = request;
+
+    try {
+      await request;
+    } finally {
+      if (this.actionInFlight === request) {
+        this.actionInFlight = undefined;
+      }
+      this.scheduleReset();
+    }
   }
 
   getOn(): boolean {
     return this.switchState;
   }
 
-  async disarmSomfyAlarm() {
+  private scheduleReset(): void {
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
+
+    this.resetTimer = setTimeout(() => {
+      this.switchState = false;
+      this.service.updateCharacteristic(this.platform.Characteristic.On, false);
+      this.platform.log.info(`${this.action.label} reset to OFF`);
+    }, SWITCH_RESET_DELAY_MS);
+  }
+
+  private async callSomfyHttpApi(): Promise<void> {
+    const port = this.platform.config.httpPort ?? DEFAULT_HTTP_PORT;
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+      throw new Error(`Invalid Somfy Protect HTTP API port: ${port}`);
+    }
+
+    const url = `http://${HTTP_HOST}:${port}${this.action.endpoint}`;
+    const token = this.platform.config.httpToken;
+    if (!token?.trim()) {
+      throw new Error('Somfy Protect HTTP API token is required');
+    }
+
+    const headers: Record<string, string> = {};
+    headers.Authorization = `Bearer ${token}`;
+
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+
+    this.platform.log.info(`Sending request to ${this.action.logDescription} via ${url}`);
+
     try {
-      const port = this.platform.config.httpPort || 8582;
-      const token = this.platform.config.httpToken;
-      const url = `http://localhost:${port}/disarm`;
-
-      this.platform.log.info(`Sending disarm command to Somfy Protect HTTP API at ${url}...`);
-
-      const headers: Record<string, string> = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
       const response = await fetch(url, {
         method: 'POST',
         headers,
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        this.platform.log.error(`HTTP API returned error ${response.status}: ${errorText}`);
-        this.platform.log.error('Make sure the Somfy Protect plugin HTTP API is enabled and configured correctly.');
-        return;
+        const errorText = (await response.text()).substring(0, 500);
+        throw new Error(`Somfy Protect HTTP API returned ${response.status}: ${errorText || response.statusText}`);
       }
 
-      // Check if the response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const responseText = await response.text();
-        this.platform.log.error(`HTTP API returned non-JSON response (${contentType || 'unknown type'})`);
-        this.platform.log.error('Response preview:', responseText.substring(0, 200));
-
-        // Check if this looks like Homebridge Config UI (port conflict)
-        if (responseText.includes('<!doctype html>') && responseText.includes('Homebridge')) {
-          this.platform.log.error('⚠️  Port conflict detected! The port is being used by Homebridge Config UI.');
-          this.platform.log.error(`Make sure the Somfy Protect plugin HTTP API is configured on port ${port} (not 8581).`);
-          this.platform.log.error('Port 8581 is reserved for Homebridge Config UI.');
-        } else {
-          this.platform.log.error('Make sure the Somfy Protect plugin HTTP API is properly configured.');
-        }
-        return;
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        throw new Error(`Somfy Protect HTTP API returned unexpected content type: ${contentType || 'unknown'}`);
       }
 
-      const result = await response.json();
-      this.platform.log.info('✓ Successfully disarmed alarm via HTTP API');
-      if (result && typeof result === 'object') {
-        this.platform.log.info(`Response: ${JSON.stringify(result)}`);
+      const result: unknown = await response.json();
+      if (
+        typeof result !== 'object'
+        || result === null
+        || !('success' in result)
+        || result.success !== true
+      ) {
+        throw new Error('Somfy Protect HTTP API response did not confirm success');
       }
+
+      this.platform.log.debug(`Somfy Protect response: ${JSON.stringify(result)}`);
+      this.platform.log.info(`Successfully sent command to ${this.action.logDescription}`);
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('ECONNREFUSED')) {
-          this.platform.log.error(`Could not connect to Somfy Protect HTTP API on port ${this.platform.config.httpPort || 8582}`);
-          this.platform.log.error('Make sure the Somfy Protect plugin is running and HTTP API is enabled.');
-          this.platform.log.error('Check that the httpPort in Somfy Protect plugin matches this configuration.');
-        } else {
-          this.platform.log.error('Error calling Somfy Protect HTTP API:', error.message);
-        }
-      } else {
-        this.platform.log.error('Unknown error calling Somfy Protect HTTP API:', error);
-      }
+      const message = error instanceof Error ? error.message : String(error);
+      const detail = error instanceof Error && error.name === 'AbortError'
+        ? `request timed out after ${REQUEST_TIMEOUT_MS}ms`
+        : message;
+      this.platform.log.error(`Failed to ${this.action.logDescription}: ${detail}`);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 }
