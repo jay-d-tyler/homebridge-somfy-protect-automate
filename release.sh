@@ -1,57 +1,40 @@
 #!/bin/bash
 
-# Quick release script for Homebridge Somfy Protect Automate
-# Usage: ./release.sh [patch|minor|major]
-
-set -e
+set -euo pipefail
 
 BUMP_TYPE=${1:-patch}
 
-echo "🚀 Starting release process..."
-echo "Version bump type: $BUMP_TYPE"
+case "$BUMP_TYPE" in
+  patch|minor|major)
+    ;;
+  *)
+    echo "Usage: $0 [patch|minor|major]"
+    exit 2
+    ;;
+esac
 
-# Check if we have npm credentials
-if ! npm whoami &>/dev/null; then
-    echo "❌ Not logged into npm!"
-    echo ""
-    echo "To fix this permanently, generate an npm automation token:"
-    echo "1. Go to https://www.npmjs.com/settings/YOUR_USERNAME/tokens"
-    echo "2. Click 'Generate New Token' → 'Classic Token'"
-    echo "3. Select 'Automation' type"
-    echo "4. Copy the token"
-    echo "5. Run: npm config set //registry.npmjs.org/:_authToken YOUR_TOKEN"
-    echo ""
-    exit 1
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Release aborted: commit or stash the current working tree first."
+  exit 1
 fi
 
-echo "✓ npm credentials found"
+if ! npm whoami >/dev/null 2>&1; then
+  echo "Release aborted: npm authentication is required. Run 'npm login' first."
+  exit 1
+fi
 
-# Update version in source code to match package.json version
-update_version_in_source() {
-    local new_version=$1
-    sed -i.bak "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v$new_version/" src/index.ts
-    rm -f src/index.ts.bak
-}
-
-# Get current version
 CURRENT_VERSION=$(node -p "require('./package.json').version")
-echo "Current version: $CURRENT_VERSION"
+echo "Releasing from v$CURRENT_VERSION with a $BUMP_TYPE version bump..."
 
-# Bump version
-npm version $BUMP_TYPE --no-git-tag-version
+# Fail before creating a release commit or tag if the repository is not healthy.
+npm run check
 
-# Get new version
+# npm version runs the version lifecycle, creates a release commit, and tags it.
+npm version "$BUMP_TYPE"
+
+# prepublishOnly runs the complete local quality gate before publication.
+npm publish --access public
+
 NEW_VERSION=$(node -p "require('./package.json').version")
-echo "New version: $NEW_VERSION"
-
-# Update version in source
-update_version_in_source $NEW_VERSION
-echo "✓ Updated version in source code"
-
-# Build and publish
-echo "Building and publishing..."
-npm publish
-
-echo ""
-echo "✅ Successfully released v$NEW_VERSION!"
-echo "View at: https://www.npmjs.com/package/@jay-d-tyler/homebridge-somfy-protect-automate"
+echo "Published v$NEW_VERSION."
+echo "Push the release commit and tag with: git push --follow-tags"

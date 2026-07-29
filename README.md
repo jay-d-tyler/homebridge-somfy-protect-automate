@@ -3,58 +3,56 @@
 [![npm version](https://badge.fury.io/js/%40jay-d-tyler%2Fhomebridge-somfy-protect-automate.svg)](https://badge.fury.io/js/%40jay-d-tyler%2Fhomebridge-somfy-protect-automate)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-A Homebridge plugin that provides a stateless switch to disarm Somfy Protect alarms via HomeKit automations.
+A Homebridge plugin that exposes three stateless HomeKit switches for Somfy Protect alarm automations:
 
-## Why This Plugin?
+- **Disarm Somfy Protect**
+- **Arm Somfy Protect for Away**
+- **Arm Somfy Protect for Night**
 
-HomeKit has a built-in security restriction that prevents automations from directly disarming security alarms. This is a safety feature to prevent unauthorized access. However, other accessories (like switches) can still control the alarm programmatically.
+The switches call the local HTTP API provided by
+[`@jay-d-tyler/homebridge-somfy-protect`](https://github.com/jay-d-tyler/homebridge-somfy-protect).
+They reset to off one second after each request.
 
-This plugin creates a workaround by providing a **stateless switch** that, when activated, automatically disarms your Somfy Protect alarm. You can then use this switch in HomeKit automations, effectively giving you the ability to automate alarm disarming.
+## Why this exists
 
-## Features
+HomeKit does not allow every security-system state change to be used directly in
+automations. Stateless switches provide an automation-friendly trigger while the
+Somfy Protect plugin remains responsible for authentication, site discovery, and
+alarm control.
 
-- 🔘 **Stateless Switch**: Acts like a button that automatically resets after use
-- 🌐 **HTTP API Communication**: Uses REST API for reliable cross-plugin communication
-- 🔒 **One-Way Operation**: Only disarms (prevents accidental arming via automation)
-- ⚡ **Instant Response**: Triggers immediately when activated
-- 🎯 **Simple Setup**: Minimal configuration required
-- 🔐 **Optional Security**: Supports token-based authentication
+## Required companion API
 
-## Prerequisites
+Install `@jay-d-tyler/homebridge-somfy-protect` version 2.3.0 or later. Its
+HTTP API exposes these endpoints:
 
-This plugin requires the main Somfy Protect plugin (v2.2.0+) to be installed and configured with HTTP API enabled:
+| Switch | HTTP request | Somfy state |
+| --- | --- | --- |
+| Disarm Somfy Protect | `POST /disarm` | `disarmed` |
+| Arm Somfy Protect for Away | `POST /arm/away` | `armed` |
+| Arm Somfy Protect for Night | `POST /arm/night` | `partial` |
 
-- [@jay-d-tyler/homebridge-somfy-protect](https://github.com/jay-d-tyler/homebridge-somfy-protect)
+Each successful endpoint must return a 2xx JSON response containing
+`{"success": true}`.
 
-### Enable HTTP API in Somfy Protect Plugin:
+Older companion-plugin releases expose only `POST /disarm`. The Disarm switch
+will continue to work with them, but the Away and Night switches require version
+2.3.0 or later.
 
-1. Go to Somfy Protect plugin settings
-2. Set `httpPort` to `8582` (recommended, as 8581 is used by Homebridge Config UI)
-3. Optionally set `httpToken` for authentication
-4. Restart Homebridge
-
-Make sure your Somfy Protect alarm is working in HomeKit before installing this automation helper.
+Both plugins may run on child bridges because they communicate over the local
+HTTP API rather than trying to inspect each other's accessory cache.
 
 ## Installation
 
-### Option 1: Homebridge Config UI X (Recommended)
-
-1. Search for `@jay-d-tyler/homebridge-somfy-protect-automate` in the Homebridge Config UI X plugin search
-2. Click **Install**
-3. Configure the plugin (see Configuration section below)
-4. Restart Homebridge
-
-### Option 2: Manual Installation
+Install through Homebridge Config UI, or manually:
 
 ```bash
 npm install -g @jay-d-tyler/homebridge-somfy-protect-automate
 ```
 
-Then add the platform to your `config.json` (see Configuration section below).
-
 ## Configuration
 
-Add this platform to your Homebridge `config.json`:
+Enable the HTTP API in the companion Somfy Protect plugin, then configure this
+plugin with the same port and token:
 
 ```json
 {
@@ -63,158 +61,87 @@ Add this platform to your Homebridge `config.json`:
       "platform": "SomfyProtectAutomate",
       "name": "Somfy Protect Automate",
       "httpPort": 8582,
-      "httpToken": "optional-secret-token"
+      "httpToken": "use-a-long-random-token"
     }
   ]
 }
 ```
 
-### Configuration Options
-
 | Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `platform` | string | Yes | `SomfyProtectAutomate` | Must be `SomfyProtectAutomate` |
-| `name` | string | No | `Somfy Protect Automate` | The name that appears in Homebridge logs |
-| `httpPort` | number | No | `8582` | Port the Somfy Protect HTTP API is listening on (Note: 8581 is used by Homebridge Config UI) |
-| `httpToken` | string | No | - | Optional authentication token (must match Somfy Protect plugin) |
+| --- | --- | --- | --- | --- |
+| `platform` | string | Yes | — | Must be `SomfyProtectAutomate` |
+| `name` | string | No | `Somfy Protect Automate` | Platform name shown in Homebridge |
+| `httpPort` | integer | No | `8582` | Companion HTTP API port, from 1 to 65535 |
+| `httpToken` | string | Yes | — | Bearer token configured in both plugins |
 
-## Usage
+Port 8581 is normally used by Homebridge Config UI. Use 8582 or another free
+port.
 
-### Setting Up HomeKit Automations
+### Security
 
-1. **Add the Switch to HomeKit**
-   - After restarting Homebridge, the switch will appear in your Home app
-   - It will be named according to your `buttonLabel` configuration
+`httpToken` is required in both plugins. Any client able to reach an
+unauthenticated alarm-control port could otherwise change the alarm state. The
+token is sent only to the IPv4 loopback address `127.0.0.1`. Keep the companion
+server on its default `127.0.0.1` bind address; LAN exposure is unnecessary for
+this integration.
 
-2. **Create an Automation**
-   - Open the Home app
-   - Go to the Automation tab
-   - Create a new automation (e.g., "When I arrive home")
-   - Add action: Turn on the "Disarm Somfy" switch
-   - The alarm will disarm automatically when the automation runs
+## HomeKit automations
 
-3. **Example Automations**
-   - **Arrive Home**: Disarm when you arrive home
-   - **Wake Up**: Disarm at a specific time in the morning
-   - **Scene-Based**: Disarm when you activate a "Good Morning" scene
-   - **Geofencing**: Disarm when family members arrive
+After restarting Homebridge, add any of the three switches to a scene or
+automation. Turning a switch on sends its command immediately. The switch:
 
-### How It Works
+1. remains on while the companion API request is in flight;
+2. reports an error if the API rejects, times out, or returns a non-success
+   status;
+3. resets to off one second after the request finishes.
 
-```
-HomeKit Automation → Turns on Switch → Plugin Detects Switch On →
-Plugin Finds Somfy Alarm → Plugin Sends Disarm Command →
-Switch Resets to Off (stateless)
-```
-
-The switch automatically resets to the "off" state after 1 second, making it act like a momentary button rather than a persistent switch.
+Repeated triggers while the same command is already in flight are coalesced so a
+single tap cannot send duplicate alarm commands.
 
 ## Troubleshooting
 
-### The switch doesn't disarm the alarm
+### Away or Night returns 404
 
-1. **Check that Somfy Protect is working**:
-   - Open the Home app
-   - Try manually disarming the alarm using the main Somfy Protect accessory
-   - If this doesn't work, the issue is with the main Somfy plugin
+Upgrade `@jay-d-tyler/homebridge-somfy-protect` to version 2.3.0 or later.
 
-2. **Check Homebridge logs**:
-   ```bash
-   tail -f ~/.homebridge/homebridge.log
-   ```
-   Look for messages starting with `[Somfy Protect Automate]`
+### A command returns 401
 
-3. **Verify the alarm is detected**:
-   - Look for log message: `Found Somfy Protect security system: [name]`
-   - If you don't see this, the plugin cannot find your alarm
+The `httpToken` values do not match. Update both plugin configurations and
+restart their bridges.
 
-### The switch doesn't appear in HomeKit
+### A command times out or refuses the connection
 
-1. Remove the accessory from HomeKit and re-add it
-2. Restart Homebridge
-3. Check that the platform is correctly configured in `config.json`
+Confirm that:
 
-### The alarm name doesn't contain "Somfy" or "Protect"
+- the companion Somfy Protect plugin is running;
+- its HTTP API is enabled;
+- both plugins use the same `httpPort`;
+- the selected port is not already used by Homebridge Config UI or another
+  process.
 
-The plugin looks for accessories with these keywords. If your alarm has a different name, you may need to modify the detection logic. Open a GitHub issue with your alarm's name.
+### A switch does not appear
 
-## Advanced Usage
-
-### Multiple Alarms
-
-Currently, the plugin will disarm the **first** Somfy Protect alarm it finds. If you have multiple alarms and need to control them separately, you'll need to:
-
-1. Create multiple instances of this plugin with different names
-2. Modify the code to target specific alarms (custom development)
-
-Open a GitHub issue if you need this feature!
+Restart Homebridge and inspect the logs for
+`Somfy Protect Automate`. The platform maintains exactly the three switches
+listed above and removes obsolete cached switches from older releases.
 
 ## Development
 
-### Building from Source
+```bash
+npm ci
+npm run check
+```
+
+`npm run check` runs linting, a clean TypeScript build, behavioural tests with
+coverage thresholds, and build-artifact verification.
+
+For local Homebridge development:
 
 ```bash
-# Clone the repository
-git clone https://github.com/jay-d-tyler/homebridge-somfy-protect-automate.git
-cd homebridge-somfy-protect-automate
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Link for local development
-npm link
+npm run watch
 ```
-
-### Project Structure
-
-```
-homebridge-somfy-protect-automate/
-├── src/
-│   └── index.ts          # Main plugin code
-├── config.schema.json    # Homebridge UI configuration schema
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Related Projects
-
-- [@jay-d-tyler/homebridge-somfy-protect](https://github.com/jay-d-tyler/homebridge-somfy-protect) - The main Somfy Protect plugin
-
-## Author
-
-**Jay Tyler**
-
-## Acknowledgments
-
-- Thanks to the Homebridge community for the excellent platform
-- Thanks to Somfy for their API documentation
-
-## Changelog
-
-### 1.0.0
-- Initial release
-- Stateless switch for disarming Somfy Protect alarms
-- Auto-detection of Somfy accessories
-- Basic configuration options
-
----
-
-**Note**: This plugin is not officially associated with Somfy. It is an independent project created to enhance HomeKit automation capabilities.
+Apache License 2.0. This project is independent and is not associated with
+Somfy.

@@ -9,7 +9,8 @@
     {
       "platform": "SomfyProtectAutomate",
       "name": "Somfy Protect Automate",
-      "buttonLabel": "Disarm Somfy"
+      "httpPort": 8582,
+      "httpToken": "local-development-token"
     }
   ]
 }
