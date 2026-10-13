@@ -38,8 +38,12 @@ Older companion-plugin releases expose only `POST /disarm`. The Disarm switch
 will continue to work with them, but the Away and Night switches require version
 2.3.0 or later.
 
-Both plugins may run on child bridges because they communicate over the local
-HTTP API rather than trying to inspect each other's accessory cache.
+Both plugins may run on separate child-bridge processes on the same host and
+network namespace. Automate always connects to IPv4 loopback `127.0.0.1`; it
+has no configurable remote host. Separate machines, or containers with isolated
+network namespaces, do not share that loopback endpoint even on the same LAN.
+The companion's default `127.0.0.1` bind address must be reachable from Automate's
+network namespace.
 
 ## Installation
 
@@ -115,7 +119,7 @@ Confirm that:
 
 - the companion Somfy Protect plugin is running;
 - its HTTP API is enabled;
-- both plugins use the same `httpPort`;
+- both plugins share the same host/network namespace and use the same `httpPort`;
 - the selected port is not already used by Homebridge Config UI or another
   process.
 
