@@ -47,6 +47,10 @@ network namespace.
 
 ## Installation
 
+The plugin declares Node.js 20.18.0 or later. Your Node.js version must also
+meet the requirements of your Homebridge release. Running on Node.js 26
+requires Homebridge 2.3.0 or later.
+
 Install through Homebridge Config UI, or manually:
 
 ```bash
